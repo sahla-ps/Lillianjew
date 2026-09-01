@@ -1,27 +1,95 @@
-const Brand = require("../../models/bannerSchema")
-const Product = require("../../models/productSchema")
+const Brand = require("../../models/brandSchema");
+const Product = require("../../models/productSchema");
 
-const getBrandPage = async (req,res) => {
-    try{
-        const page = parseInt(req.query.page) || 1;
-        const limit = 4;
-        const skip = (page - 1)*limit;
-        const brandData = await Brand.find({}).sort({createdAt:-1}).skip(skip).limit(limit)
-        const totalBrands = await Brand.countDocuments()
-        const totalPages = Math.ceil(totalBrands/limit)
-        const reverseBrand = brandData.reverse()
-        res.render("brand",{ 
-            brand:reverseBrand,
-            currentPage: page,
-            totalPages: totalPages,
-            totalBrands: totalBrands
-        })
+const getBrandPage = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 4;
+    const skip = (page - 1) * limit;
+    const brandData = await Brand.find({})
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    const totalBrands = await Brand.countDocuments();
+    const totalPages = Math.ceil(totalBrands / limit);
+    //const reverseBrand = brandData.reverse();
 
-    }catch(error){
-        res.redirect("/admin/pageerror")
+    res.render("brand", {
+      brand: brandData,
+      currentPage: page,
+      totalPages: totalPages,
+      totalBrands: totalBrands,
+    });
+  } catch (error) {
+    console.error("getBrandPage error:", error);
+    res.redirect("/admin/pageerror");
+  }
+};
+
+const addBrand = async (req, res) => {
+  try {
+    const brand = req.body.name;
+    if (!brand || !brand.trim()) {
+      return res.redirect("/admin/brands");
+    }
+    const findBrand = await Brand.findOne({ brandName: brand });
+    if (!findBrand) {
+      const image = req.file.filename;
+      const newBrand = new Brand({
+        brandName: brand,
+        brandImage: image,
+      });
+      await newBrand.save();
+      res.redirect("/admin/brands");
+    }
+  } catch (error) {
+    console.error("addBrand error:", error);
+    res.redirect("/admin/pageerror");
+  }
+};
+
+const blockBrand = async (req, res) => {
+    try {
+        const id = req.query.id;
+        await Brand.updateOne({_id:id}, {$set: {isBlocked: true}});
+        res.redirect("/admin/brands");
+    }catch (error) {
+        console.error("blockBrand error:", error);
+        res.redirect("/admin/pageerror");
     }
 }
 
-module.exports = {
-    getBrandPage
+const unBlockBrand = async (req, res) => {
+    try {
+        const id = req.query.id;
+        await Brand.updateOne({_id:id}, {$set: {isBlocked: false}});
+        res.redirect("/admin/brands");
+
+    }catch (error) {
+        console.error("unBlockBrand error:", error);
+        res.redirect("/admin/pageerror");
+    }
 }
+
+const deleteBrand = async (req, res) => {
+    try {
+        const {id} = req.query;
+        if(!id){
+            return res.status(400).redirect("/pageerror");
+        }
+        await Brand.deleteOne({_id:id});
+        res.redirect("/admin/brands");
+    }catch (error){
+        console.error("Error deleting brand:", error);
+        res.status(500).redirect("/admin/pageerror");
+    }
+}
+
+
+module.exports = {
+  getBrandPage,
+  addBrand,
+  blockBrand,
+  unBlockBrand,
+  deleteBrand
+};
