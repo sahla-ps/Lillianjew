@@ -118,7 +118,7 @@ const removeCategoryOffer = async (req, res) => {
 const getListCategory = async (req, res) => {
   try {
     let id = req.query.id;
-    await Category.updateOne({ _id: id }, { $set: { isListed: false } });
+    await Category.updateOne({ _id: id }, { $set: { isListed: true } });
     res.redirect("/admin/category");
   } catch (error) {
     res.redirect("/admin/pageerror");
