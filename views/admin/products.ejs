@@ -32,28 +32,34 @@
         </thead>
         <tbody>
 
-            <%for(let i =data.length-1; i>=0; i--) {%>
-            
-            <tr>
-                <td><%= data[i].productName %></td>
-                <td><%= data[i].brand %></td>
-                <td><%= data[i].category.name %></td>
-                <td><%= data[i].salePrice %></td>
-                <td>
-                </td>
-                <td>
-                
-                    <button class="btn btn-info" onclick="" style="width: 100px;">
-                        <a href="#" class="text-white">Add Offer</a>
-                    </button>
-        
-                    <button class="btn btn-info" onclick="" style="width: 100px;">
-                        <a href="#" class="text-white">Remove</a>
-                    </button>
-                
-                </td>
-                <td></td>
-                <td>
+           <% for (let i = data.length - 1; i >= 0; i--) { %>
+
+    <tr>
+        <td><%= data[i].productName %></td>
+        <td><%= data[i].brand?.brandName %></td>
+        <td><%= data[i].category.name %></td>
+        <td><%= data[i].salePrice %></td>
+        <td>
+            <% if (data[i].productOffer) { %>
+                <%= data[i].productOffer %>%
+            <% } else { %>
+                0%
+            <% } %>
+        </td>
+        <td>
+            <% if (!data[i].productOffer) { %>
+                <button class="btn btn-info" onclick="addOffer('<%= data[i]._id %>')" style="width: 100px;">
+                    Add Offer
+                </button>
+            <% } else { %>
+                <button class="btn btn-info" onclick="removeOffer('<%= data[i]._id %>')" style="width: 100px;">
+                    Remove
+                </button>
+            <% } %>
+        </td>
+        <td><%= data[i].quantity %></td>
+        <td>
+
                 
                     <button class="btn btn-danger" style="width: 80px;">
                         <a href="" class="text-white" style="text-decoration: none;">Block</a>
@@ -99,4 +105,87 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10/dist/sweetalert2.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+<script>
+    async function addOffer(productId) {
+    const { value: offer, isConfirmed } = await Swal.fire({
+        title: "Offer Percentage",
+        input: 'number',
+        inputLabel: 'Enter the offer percentage',
+        inputPlaceholder: '%',
+        inputAttributes: {
+            min: 0,
+            max: 100,
+        },
+    });
+
+    // User cancelled the prompt or left it empty — don't call the server
+    if (!isConfirmed || offer === '' || offer === undefined || offer === null) {
+        return;
+    }
+
+    $.ajax({
+        url: `/admin/addProductOffer`,
+        method: 'POST',
+        data: {
+            percentage: offer,
+            productId: productId,
+        },
+        success: (response) => {
+            if (response.success === true) {
+                Swal.fire('Success', 'Offer added successfully!', 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Failed', response.message || 'Could not add the offer.', 'error');
+            }
+        },
+        error: (xhr) => {
+            const message = xhr.responseJSON?.message || 'Something went wrong. Please try again.';
+            Swal.fire('Error', message, 'error');
+        },
+    });
+}
+
+    function removeOffer(productId) {
+    
+     try{
+        swal.fire({
+            title: 'Are you sure?',
+            text: 'This will remove the offer from the product.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, remove it!',
+            timer: 5000,
+            timerProgressBar: true,
+        }).then(async(result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url:"/admin/removeProductOffer",
+                    method: 'POST',
+                    data: { productId: productId },
+                    success: (response) => {
+                        if(response.status=== true){
+                            Swal.fire("Removed!", "Offer removed successfully.", "success")
+                            location.reload();
+                        }else if(response.status=== false){
+                            Swal.fire("Error!", "Failed to remove offer.", "error")
+                        }else{
+                            alert("failed")
+                        }
+                    }
+                });
+            }
+        });
+                    
+     }catch(error){
+        console.error("Error removing offer:", error);
+        
+    }
+}
+
+</script>
+
 <%- include("../../views/partials/admin/footer") %>

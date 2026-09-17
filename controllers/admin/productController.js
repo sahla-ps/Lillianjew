@@ -107,27 +107,38 @@ const addProducts = async (req, res) => {
 const getAllProducts = async (req, res) => {
   try {
     const search = req.query.search || "";
-    const page = req.query.page || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = 10;
 
-    const productData = await Product.find({
-      $or: [
-        { productName: { $regex: search, $options: "i" } },
-        { brand: { $regex: search, $options: "i" } },
-      ],
-    }).limit(limit*1).skip((page - 1) * limit).populate("category").exec();
+    // escape regex special chars so a search like "nike (shoes)" doesn't throw
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const safeSearch = escapeRegex(search);
 
-    const count = await Product.find({
+    const matchingBrands = await Brand.find({
+      brandName: { $regex: safeSearch, $options: "i" }, // match your Brand schema's actual field name
+    }).select("_id");
+    const brandIds = matchingBrands.map((b) => b._id);
+
+    const filter = {
       $or: [
-        { productName: { $regex: search, $options: "i" } },
-        { brand: { $regex: search, $options: "i" } },
+        { productName: { $regex: safeSearch, $options: "i" } },
+        { brand: { $in: brandIds } },
       ],
-    }).countDocuments();
+    };
+
+    const productData = await Product.find(filter)
+      .limit(limit)
+      .skip((page - 1) * limit)
+      .populate("category")
+      .populate("brand")
+      .exec();
+
+    const count = await Product.countDocuments(filter);
 
     const category = await Category.find({ isListed: true });
     const brand = await Brand.find({ isBlocked: false });
 
-    if(category && brand){
+    if (category && brand) {
       res.render("products", {
         data: productData,
         currentPage: page,
@@ -136,9 +147,65 @@ const getAllProducts = async (req, res) => {
         brand: brand,
         search: search,
       });
-    }else {
-      res.render("page-404")
+    } else {
+      res.render("page-404");
     }
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.redirect("/admin/pageerror");
+  }
+};
+
+const addProductOffer = async (req, res) => {
+  try {
+    const { productId, percentage } = req.body;
+    const offerPercentage = parseInt(percentage, 10);
+
+    if (isNaN(offerPercentage) || offerPercentage < 0 || offerPercentage > 100) {
+      return res.status(400).json({ success: false, message: "Please provide a valid percentage." });
+    }
+
+    const findProduct = await Product.findById(productId);
+    if (!findProduct) {
+      return res.status(404).json({ success: false, message: "Product not found." });
+    }
+
+    const findCategory = await Category.findOne({ _id: findProduct.category });
+    if (!findCategory) {
+      return res.status(404).json({ success: false, message: "Category not found." });
+    }
+
+    if (findCategory.categoryOffer > offerPercentage) {
+      return res.json({
+        success: false,
+        message: "This category already has a higher offer than the one you're trying to set.",
+      });
+    }
+
+    // Recalculate off regularPrice (not the current salePrice) so re-applying
+    // or changing an offer later doesn't compound on an already-discounted number.
+    findProduct.salePrice =
+      findProduct.regularPrice - Math.floor((findProduct.regularPrice * offerPercentage) / 100);
+    findProduct.productOffer = offerPercentage;
+    await findProduct.save();
+
+    return res.json({ success: true, message: "Product offer added successfully." });
+  } catch (error) {
+    console.error("Error adding product offer:", error);
+    return res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+const removeProductOffer = async (req, res) => {
+  try {
+
+const { productId } = req.body;
+const findProduct = await Product.findOne({ _id: productId });
+const percentage = findProduct.productOffer;
+findProduct.salePrice = findProduct.salePrice + Math.floor((findProduct.salePrice * percentage) / 100);
+findProduct.productOffer = 0;
+await findProduct.save();
+res.json({ status: true, message: "Product offer removed successfully" });
 
   }catch (error) {
     res.redirect("/admin/pageerror");
@@ -149,4 +216,6 @@ module.exports = {
   getProductAddPage,
   addProducts,
   getAllProducts,
+  addProductOffer,
+  removeProductOffer
 };
