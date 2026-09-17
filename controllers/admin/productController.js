@@ -212,10 +212,36 @@ res.json({ status: true, message: "Product offer removed successfully" });
   }
 }
 
+const blockProduct = async (req, res) => {
+  try {
+
+    const id = req.query.id;
+    await Product.updateOne({ _id: id }, { $set: { isBlocked: true } });
+    res.redirect("/admin/products");
+
+  }catch (error) {
+    res.redirect("/admin/pageerror");
+  }
+}
+
+const unblockProduct = async (req, res) => {
+  try {
+
+    const id = req.query.id;
+    await Product.updateOne({ _id: id }, { $set: { isBlocked: false } });
+    res.redirect("/admin/products");
+
+  }catch (error) {
+    res.redirect("/admin/pageerror");
+  }
+}
+
 module.exports = {
   getProductAddPage,
   addProducts,
   getAllProducts,
   addProductOffer,
-  removeProductOffer
+  removeProductOffer,
+  blockProduct,
+  unblockProduct
 };
