@@ -197,11 +197,48 @@ const postNewPassword = async(req,res) => {
 //   }
 // };
 
+// const userProfile = async (req,res) => {
+//   try {
+    
+//     const userId = req.session.user;
+//     const userData = await User.findById(userId)
+//     res.render('profile',{
+//       user:userData,
+//     })
+
+//   } catch (error) {
+//     console.error("Error for retrieve profile data",error)
+//     res.redirect("/pageNotFound")
+//   }
+// }
+const userProfile = async (req, res) => {
+  try {
+    const userId = req.session.user;
+
+    if (!userId) {
+      return res.redirect('/login');
+    }
+
+    const userData = await User.findById(userId);
+
+    if (!userData) {
+      return req.session.destroy(() => res.redirect('/login'));
+    }
+
+    res.render('profile', { user: userData });
+  } catch (error) {
+    console.error('Error retrieving profile data', error);
+    res.redirect('/pageNotFound');
+  }
+};
+
+
 module.exports = {
   getForgotPassPage,
   forgotEmailValid,
   verifyForgotPassOtp,
   getResetPassPage,
   resendOtp,
-  postNewPassword
+  postNewPassword,
+  userProfile
 };
