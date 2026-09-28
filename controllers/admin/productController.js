@@ -12,7 +12,7 @@ const getProductAddPage = async (req, res) => {
     const category = await Category.find({ isListed: true });
     const brand = await Brand.find({ isBlocked: false });
 
-    res.render("product-add", {
+    res.render("admin/product-add", {
       cat: category,
       brand: brand,
     });
@@ -33,7 +33,7 @@ const addProducts = async (req, res) => {
     if (productExists) {
       // TODO: adjust the view name / re-fetch whatever data your
       // add-product page needs (brand list, category list, etc.)
-      return res.status(400).render("admin/add-product", {
+      return res.status(400).render("admin/product-add", {
         error: "A product with this name already exists.",
       });
     }
@@ -76,7 +76,7 @@ const addProducts = async (req, res) => {
     }
 
     if (images.length === 0) {
-      return res.status(400).render("admin/add-product", {
+      return res.status(400).render("admin/product-add", {
         error: "Please upload at least one image.",
       });
     }
@@ -185,7 +185,7 @@ const addProductOffer = async (req, res) => {
 
     // Recalculate off regularPrice (not the current salePrice) so re-applying
     // or changing an offer later doesn't compound on an already-discounted number.
-    findProduct.salePrice =findProduct.regularPrice;
+    findProduct.salePrice =
       findProduct.regularPrice - Math.floor((findProduct.regularPrice * offerPercentage) / 100);
     findProduct.productOffer = offerPercentage;
     await findProduct.save();
@@ -203,7 +203,7 @@ const removeProductOffer = async (req, res) => {
 const { productId } = req.body;
 const findProduct = await Product.findOne({ _id: productId });
 const percentage = findProduct.productOffer;
-   findProduct.salePrice = findProduct.regularPrice;
+findProduct.salePrice = findProduct.salePrice + Math.floor((findProduct.salePrice * percentage) / 100);
 findProduct.productOffer = 0;
 await findProduct.save();
 res.json({ status: true, message: "Product offer removed successfully" });
