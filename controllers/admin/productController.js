@@ -185,7 +185,7 @@ const addProductOffer = async (req, res) => {
 
     // Recalculate off regularPrice (not the current salePrice) so re-applying
     // or changing an offer later doesn't compound on an already-discounted number.
-    findProduct.salePrice =
+    findProduct.salePrice =findProduct.regularPrice;
       findProduct.regularPrice - Math.floor((findProduct.regularPrice * offerPercentage) / 100);
     findProduct.productOffer = offerPercentage;
     await findProduct.save();
@@ -203,7 +203,7 @@ const removeProductOffer = async (req, res) => {
 const { productId } = req.body;
 const findProduct = await Product.findOne({ _id: productId });
 const percentage = findProduct.productOffer;
-findProduct.salePrice = findProduct.salePrice + Math.floor((findProduct.salePrice * percentage) / 100);
+   findProduct.salePrice = findProduct.regularPrice;
 findProduct.productOffer = 0;
 await findProduct.save();
 res.json({ status: true, message: "Product offer removed successfully" });
