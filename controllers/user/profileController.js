@@ -134,29 +134,25 @@ const resendOtp = async (req, res) => {
   }
 };
 
-const postNewPassword = async(req,res) => {
+const postNewPassword = async (req, res) => {
   try {
-    
-    const {newPass1,newPass2} = req.body;
+    const { newPass1, newPass2 } = req.body;
     const email = req.session.email;
 
-    if(newPass1 === newPass2){
-      const passwordHash = await securePassword(newPass1)
+    if (newPass1 === newPass2) {
+      const passwordHash = await securePassword(newPass1);
       await User.updateOne(
-        {email:email},
-        {$set: {password:passwordHash}}
-      )
-      res.redirect("/login")
-    }else{
-      res.render("reset-password",{message:"Passwords do not match."})
+        { email: email },
+        { $set: { password: passwordHash } },
+      );
+      res.redirect("/login");
+    } else {
+      res.render("reset-password", { message: "Passwords do not match." });
     }
-
   } catch (error) {
-    res.redirect("/pageNotFound")
+    res.redirect("/pageNotFound");
   }
-}
-
-
+};
 
 // const postNewPassword = async (req, res) => {
 //   try {
@@ -199,7 +195,7 @@ const postNewPassword = async(req,res) => {
 
 // const userProfile = async (req,res) => {
 //   try {
-    
+
 //     const userId = req.session.user;
 //     const userData = await User.findById(userId)
 //     res.render('profile',{
@@ -216,22 +212,152 @@ const userProfile = async (req, res) => {
     const userId = req.session.user;
 
     if (!userId) {
-      return res.redirect('/login');
+      return res.redirect("/login");
     }
 
     const userData = await User.findById(userId);
 
     if (!userData) {
-      return req.session.destroy(() => res.redirect('/login'));
+      return req.session.destroy(() => res.redirect("/login"));
     }
 
-    res.render('profile', { user: userData });
+    res.render("profile", { user: userData });
   } catch (error) {
-    console.error('Error retrieving profile data', error);
-    res.redirect('/pageNotFound');
+    console.error("Error retrieving profile data", error);
+    res.redirect("/pageNotFound");
   }
 };
 
+const changeEmail = async (req, res) => {
+  try {
+    res.render("change-email");
+  } catch (error) {
+    res.redirect("pageNotFound");
+  }
+};
+
+const changeEmailValid = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      const otp = generateOtp();
+      const emailSent = await sendVerificationEmail(email, otp);
+      if (emailSent) {
+        req.session.userOtp = otp;
+        req.session.userData - req.body;
+        req.session.email = email;
+        res.render("change-email-otp");
+        console.log("Email sent: email");
+        console.log("OTP", otp);
+      } else {
+        res.json("email-error");
+      }
+    } else {
+      res.render("change-email", {
+        message: "User with this email not exist",
+      });
+    }
+  } catch (error) {
+    res.redirect("/pageNotFound");
+  }
+};
+
+const verifyEmailOtp = async (req, res) => {
+  try {
+    const enteredOtp = req.body.otp;
+    if (enteredOtp === req.session.userOtp) {
+      req.session.userData = req.body.userData;
+      res.render("new-email", {
+        userData: req.session.userData,
+      });
+    } else {
+      res.render("change-email-otp", {
+        message: "OTP Not Matching.",
+        userData: req.session.userData,
+      });
+    }
+  } catch (error) {
+    res.redirect("/pageNotFound");
+  }
+};
+
+const updateEmail = async (req,res) => {
+  try {
+
+    const newEmail = req.body.newEmail;
+    const userId = req.session.user;
+    await User.findByIdAndUpdate(userId,{email:newEmail});
+    res.redirect("/userProfile")
+    
+  } catch (error) {
+    res.redirect("/pageNotFound")
+  }
+}
+
+const changePassword = async (req,res) => {
+  try {
+
+    res.render("change-password")
+    
+  } catch (error) {
+    res.redirect("/pageNotFound")
+  }
+}
+
+const changePasswordValid = async (req,res) => {
+
+  try {
+
+    const {email} = req.body;
+    const userExists = await User.findOne({email})
+    if(userExists){
+      const otp = generateOtp()
+      const emailSent = await sendVerificationEmail(email,otp)
+      if(emailSent) {
+        req.session.userOtp = otp
+        req.session.userData = req.body
+        req.session.email = email;
+        res.render("change-password-otp")
+        console.log("OTP",otp)
+      }else{
+        res.json({
+          success:false,
+          message: "Failed to send OTP. Please try again."
+        })
+      }
+    }else{
+      res.render("/change-password",{
+        message:"User with this email is not exist"
+      })
+    }
+    
+  } catch (error) {
+
+    console.log("Error in change password validation",error)
+    res.redirect("/pageNotFound")
+    
+  }
+}
+
+const verifyChangePassOtp = async (req,res) => {
+  try {
+
+    const enteredOtp = req.body.otp;
+    if(enteredOtp === req.session.userOtp) {
+
+      res.json({success:true,redirectUrl:"/reset-password"})
+
+    }else{
+      res.json({success:false,message:"OTP not matching"})
+    }
+    
+  } catch (error) {
+
+    res.status(500).json({success:false,message: "An error occured. Please try agian. "})
+    
+  }
+}
 
 module.exports = {
   getForgotPassPage,
@@ -240,5 +366,13 @@ module.exports = {
   getResetPassPage,
   resendOtp,
   postNewPassword,
-  userProfile
+  userProfile,
+  changeEmail,
+  changeEmailValid,
+  verifyEmailOtp,
+  updateEmail,
+  changePassword,
+  changePasswordValid,
+  verifyChangePassOtp
+
 };

@@ -3,7 +3,7 @@ const router = express.Router();
 const passport = require("passport");
 const userController = require("../controllers/user/userController");
 const profileController = require("../controllers/user/profileController");
-
+const { userAuth, adminAuth } = require("../middlewares/auth");
 router.get("/pageNotFound", userController.PageNotFound);
 
 //sign up Management
@@ -37,5 +37,14 @@ router.post("/verify-passForgot-otp", profileController.verifyForgotPassOtp);
 router.get("/reset-password", profileController.getResetPassPage);
 router.post("/resend-forgot-otp", profileController.resendOtp);
 router.post("/reset-password", profileController.postNewPassword);
+//userAuth
 router.get("/userProfile", profileController.userProfile);
+router.get('/change-email',profileController.changeEmail)
+router.post("/change-email",profileController.changeEmailValid)
+router.post("/verify-email-otp",profileController.verifyEmailOtp)
+router.post("/update-email",profileController.updateEmail)
+router.get("/change-password",profileController.changePassword)
+router.post("/change-password",profileController.changePasswordValid)
+router.post("/verify-changepassword-otp",profileController.verifyChangePassOtp)
+
 module.exports = router;
